@@ -9,18 +9,16 @@ import numpy as np
 import pandas as pd
 
 
-# -----------------------------
-# Config
-# -----------------------------
+
 CSV_PATH = "movies_metadata.csv"
 
-# sizes to test (set None to skip benchmarking by sizes)
+# sizes to test 
 BENCH_SIZES = [5_000, 10_000, 20_000, 30_000, 40_000, None]
 
-# If your CSV uses different column names, change here:
+
 COL_BUDGET = "budget"
 COL_POP = "popularity"
-COL_TITLE = "title"  # optional
+COL_TITLE = "title"  # optional just for print
 
 
 
@@ -66,7 +64,7 @@ def make_subsample(df: pd.DataFrame, n: int, seed: int = 42) -> pd.DataFrame:
 
 
 # -----------------------------
-# Timing helper (median of repeats)
+# Timing helper 
 # -----------------------------
 def median_time_ms(fn, repeat: int = 5, warmup: int = 1) -> float:
     # warmup
@@ -84,7 +82,7 @@ def median_time_ms(fn, repeat: int = 5, warmup: int = 1) -> float:
 
 
 # -----------------------------
-# Convex Hull (Monotonic Chain)
+# Convex Hull
 # -----------------------------
 def cross(o: Tuple[float, float], a: Tuple[float, float], b: Tuple[float, float]) -> float:
     return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
@@ -166,9 +164,6 @@ ORDER BY m.{COL_BUDGET} ASC, m.{COL_POP} DESC;
     with open(path, "w", encoding="utf-8") as f:
         f.write(sql_text + "\n")
 
-# -----------------------------
-# Benchmarking (time + memory)
-# -----------------------------
 @dataclass
 class BenchResult:
     n: int
@@ -182,7 +177,7 @@ class BenchResult:
 def bench_one(df: pd.DataFrame, repeat: int = 3, warmup: int = 1) -> BenchResult:
     pts = df[[COL_BUDGET, COL_POP]].to_numpy(dtype=float)
 
-    # -------- time (NO tracemalloc) --------
+
     hull_container = {"hull": None}
     def run_hull():
         hull_container["hull"] = convex_hull(pts)
@@ -197,7 +192,6 @@ def bench_one(df: pd.DataFrame, repeat: int = 3, warmup: int = 1) -> BenchResult
     sky_time = median_time_ms(run_sky, repeat=repeat, warmup=warmup)
     sky = sky_container["sky"]
 
-    # -------- memory (single run WITH tracemalloc) --------
     tracemalloc.start()
     _ = convex_hull(pts)
     _ = skyline_sort_scan(df)
@@ -214,9 +208,7 @@ def bench_one(df: pd.DataFrame, repeat: int = 3, warmup: int = 1) -> BenchResult
     )
 
 
-# -----------------------------
-# Main
-# -----------------------------
+
 def main():
     df = load_and_clean(CSV_PATH)
     write_skyline_sql()
@@ -257,8 +249,6 @@ def main():
     bench_df = pd.DataFrame([r.__dict__ for r in results])
  
 
-
-    # Experimental proof: O(n log n) normalization
     bench_df["nlogn"] = bench_df["n"].apply(lambda x: x * math.log2(x))
     bench_df["hull_norm"] = bench_df["hull_time_ms"] / bench_df["nlogn"]
     bench_df["sky_norm"] = bench_df["sky_time_ms"] / bench_df["nlogn"]
